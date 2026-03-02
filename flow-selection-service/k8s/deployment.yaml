@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flow-selection-service-aabalymov
+  namespace: test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flow-selection-service
+  template:
+    metadata:
+      labels:
+        student: aabalymov
+        app: flow-selection-service
+    spec:
+      containers:
+        - name: shift-python-container
+          image: shift.gitlab.yandexcloud.net:5050/shift-python/y2025/homeworks/abalymov-a/shift-project/flow-selection-service:1348db91
+          resources:
+            limits:
+              memory: "100Mi"
+              cpu: "100m"
+          ports:
+            - containerPort: 8000
+          envFrom:
+          - configMapRef:
+              name: app-config-flow-aabalymov
+          - secretRef:
+              name: db-credentials-flow-aabalymov
+          volumeMounts:
+          - name: config-volume
+            mountPath: /app/config.yaml
+            subPath: config.yaml
+          readinessProbe:
+            httpGet:
+              path: /healthz/ready
+              port: 8000
+            failureThreshold: 5
+            initialDelaySeconds: 30
+            periodSeconds: 2
+            successThreshold: 2
+          livenessProbe:
+            httpGet:
+              path: /healthz/up
+              port: 8000
+            failureThreshold: 10
+            initialDelaySeconds: 10
+            periodSeconds: 2
+      volumes:
+      - name: config-volume
+        configMap:
+          name: app-config-flow-aabalymov
+          items:
+          - key: config.yaml
+            path: config.yaml
+      imagePullSecrets:
+        - name: shift-gitlab-registry-auth-aabalymov
+

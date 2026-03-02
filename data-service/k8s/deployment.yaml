@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: data-service-aabalymov
+  namespace: test
+  labels:
+    student: aabalymov
+    app: data-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: data-service
+  template:
+    metadata:
+      labels:
+        student: aabalymov
+        app: data-service
+    spec:
+      containers:
+        - name: data-service-container
+          image: shift.gitlab.yandexcloud.net:5050/shift-python/y2025/homeworks/abalymov-a/shift-project/data-service:1348db91
+          resources:
+            limits:
+              memory: "100Mi"
+              cpu: "100m"
+          ports:
+            - containerPort: 8002
+          envFrom:
+          - secretRef:
+              name: db-credentials-data-service-aabalymov
+          volumeMounts:
+          - name: config-volume
+            mountPath: /app/config.yaml
+            subPath: config.yaml
+          readinessProbe:
+            httpGet:
+              path: /healthz/ready
+              port: 8002
+            failureThreshold: 5
+            initialDelaySeconds: 30
+            periodSeconds: 2
+            successThreshold: 2
+          livenessProbe:
+            httpGet:
+              path: /healthz/up
+              port: 8002
+            failureThreshold: 10
+            initialDelaySeconds: 10
+            periodSeconds: 2
+      volumes:
+      - name: config-volume
+        configMap:
+          name: app-config-data-service-aabalymov
+          items:
+          - key: config.yaml
+            path: config.yaml
+      imagePullSecrets:
+        - name: shift-gitlab-registry-auth-aabalymov

@@ -1,0 +1,18 @@
+app:
+  host: '0.0.0.0'
+  port: 8001
+
+data_service:
+  base_url: http://localhost:8002
+  timeout: 5
+  retries:
+    max_attempts: 2
+    delay: 1
+
+antifraud_service:
+  base_url: http://localhost:8003
+  timeout: 5
+
+kafka:
+  bootstrap_servers: 'localhost:9092'
+  topic: 'scoring_results'

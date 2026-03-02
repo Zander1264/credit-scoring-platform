@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: shift-gitlab-registry-auth-aabalymov-scoring
+  namespace: test
+  labels:
+    student: aabalymov
+    app: scoring-service
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: eyJhdXRocyI6eyJzaGlmdC5naXRsYWIueWFuZGV4Y2xvdWQubmV0OjUwNTAiOnsidXNlcm5hbWUiOiJhYmFseW1vdi5hbmRyZWlAZ21haWwuY29tIiwicGFzc3dvcmQiOiJnbHBhdC01b3pDei1HTVN5dnVnRWExZ0VGcSJ9fX0=

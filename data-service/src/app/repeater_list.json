@@ -1,0 +1,85 @@
+{
+    "clients": [
+        {
+            "phone": "78945614521",
+            "age": 25,
+            "monthly_income": 30000,
+            "employment_type": "full_time",
+            "has_property": true,
+            "history": [
+                {
+                    "loan_id": "loan_20250101_001",
+                    "product_name": "LoyaltyLoan",
+                    "amount": 60000,
+                    "issue_date": "2025-01-01",
+                    "term_days": 120,
+                    "status": "closed",
+                    "close_date": "2025-04-01"
+                },
+                {
+                    "loan_id": "loan_20250101_002",
+                    "product_name": "AdvantagePlus",
+                    "amount": 100000,
+                    "issue_date": "2025-04-01",
+                    "term_days": 180,
+                    "status": "open",
+                    "close_date": null
+                }
+            ]
+        },
+        {
+            "phone": "79876543210",
+            "age": 19,
+            "monthly_income": 50000,
+            "employment_type": "part_time",
+            "has_property": false,
+            "history": [
+                {
+                    "loan_id": "loan_20250101_003",
+                    "product_name": "AdvantagePlus",
+                    "amount": 80000,
+                    "issue_date": "2025-02-15",
+                    "term_days": 90,
+                    "status": "closed",
+                    "close_date": "2025-05-15"
+                },
+                {
+                    "loan_id": "loan_20250101_004",
+                    "product_name": "PrimeCredit",
+                    "amount": 150000,
+                    "issue_date": "2025-06-01",
+                    "term_days": 120,
+                    "status": "open",
+                    "close_date": null
+                }
+            ]
+        },
+        {
+            "phone": "79123456789",
+            "age": 45,
+            "monthly_income": 70000,
+            "employment_type": "freelancer",
+            "has_property": true,
+            "history": [
+                {
+                    "loan_id": "loan_20250101_005",
+                    "product_name": "PrimeCredit",
+                    "amount": 200000,
+                    "issue_date": "2025-02-10",
+                    "term_days": 180,
+                    "status": "closed",
+                    "close_date": "2025-08-10"
+                },
+                {
+                    "loan_id": "loan_20250101_006",
+                    "product_name": "LoyaltyLoan",
+                    "amount": 50000,
+                    "issue_date": "2025-01-15",
+                    "term_days": 60,
+                    "status": "closed",
+                    "close_date": "2025-03-15"
+                }
+            ]
+        }
+    ]
+}

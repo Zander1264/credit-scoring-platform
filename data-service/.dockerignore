@@ -1,0 +1,12 @@
+.gitignore
+.mypy_cache
+.pytest_cache
+.ruff_cache
+.venv
+.vscode
+.env
+*.md
+!README*.md
+k8s
+config.yaml
+helm

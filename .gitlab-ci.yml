@@ -1,0 +1,338 @@
+image: python:3.12-slim
+
+stages:
+  - linting
+  - type-checking
+  - testing
+  - building
+  - pushing
+
+.base_template:
+  tags:
+    - docker
+  before_script:
+    - pip install poetry
+    - cd ${SERVICE_DIR}
+    - poetry install --no-root
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+      exists:
+        - "${SERVICE_DIR}/Dockerfile"
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      exists:
+        - "${SERVICE_DIR}/Dockerfile"
+    - when: never
+
+lint_job_flow:
+  extends: .base_template
+  variables:
+    SERVICE_DIR: flow-selection-service
+  stage: linting
+  script:
+    - poetry run ruff check ./
+
+mypy_job_flow:
+  extends: .base_template
+  variables:
+    SERVICE_DIR: flow-selection-service
+  stage: type-checking
+  allow_failure: true
+  script:
+    - poetry run mypy ./
+  needs:
+    - job: lint_job_flow
+
+testing_job_flow:
+  extends: .base_template
+  stage: testing
+  services:
+    - name: redis:7
+      alias: redis
+  variables:
+    REDIS_HOST: redis
+    REDIS_PORT: 6379
+    SERVICE_DIR: flow-selection-service
+  script:
+    - poetry run pytest -v --tb=short
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+  needs:
+    - job: mypy_job_flow
+
+lint_job_scoring:
+  extends: .base_template
+  variables:
+    SERVICE_DIR: scoring-service
+  stage: linting
+  script:
+    - poetry run ruff check ./
+
+mypy_job_scoring:
+  extends: .base_template
+  variables:
+    SERVICE_DIR: scoring-service
+  stage: type-checking
+  allow_failure: true
+  script:
+    - poetry run mypy ./
+  needs:
+    - job: lint_job_scoring
+
+testing_job_scoring:
+  extends: .base_template
+  variables:
+    SERVICE_DIR: scoring-service
+  stage: testing
+  script:
+    - poetry run pytest -v --tb=short
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+  needs:
+    - job: mypy_job_scoring
+
+lint_job_data_service:
+  extends: .base_template
+  variables:
+    SERVICE_DIR: data-service
+  stage: linting
+  script:
+    - poetry run ruff check ./
+
+mypy_job_data_service:
+  extends: .base_template
+  variables:
+    SERVICE_DIR: data-service
+  stage: type-checking
+  allow_failure: true
+  script:
+    - poetry run mypy ./
+  needs:
+    - job: lint_job_data_service
+
+testing_job_data_service:
+  extends: .base_template
+  stage: testing
+  services:
+    - name: postgres:17
+      alias: db
+  variables:
+    SERVICE_DIR: data-service
+    POSTGRES_DB: shift_db_pg
+    POSTGRES_USER: shift_user
+    POSTGRES_PASSWORD: shift_password
+    POSTGRES_HOST_AUTH_METHOD: trust    
+    DATABASE_URL: postgresql+asyncpg://shift_user:shift_password@db:5432/shift_db_pg
+  script:
+    - sleep 10
+    - poetry run pytest -v --tb=short
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+  needs:
+    - job: mypy_job_data_service
+
+lint_job_antifraud:
+  extends: .base_template
+  variables:
+    SERVICE_DIR: antifraud-service
+  stage: linting
+  script:
+    - poetry run ruff check ./
+
+mypy_job_antifraud:
+  extends: .base_template
+  variables:
+    SERVICE_DIR: antifraud-service
+  stage: type-checking
+  allow_failure: true
+  script:
+    - poetry run mypy ./
+  needs:
+    - job: lint_job_antifraud
+
+testing_job_antifraud:
+  extends: .base_template
+  stage: testing
+  services:
+    - name: redis:7
+      alias: redis
+  variables:
+    REDIS_HOST: redis
+    REDIS_PORT: 6379
+    SERVICE_DIR: antifraud-service
+  script:
+    - poetry run pytest -v --tb=short
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+  needs:
+    - job: mypy_job_antifraud
+
+
+.build_docker_image:
+  tags:
+    - shell
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+      changes:
+        - ${SERVICE_DIR}/src/**/*
+        - ${SERVICE_DIR}/poetry.lock
+        - ${SERVICE_DIR}/pyproject.toml
+        - ${SERVICE_DIR}/Dockerfile
+        - .gitlab-ci.yml
+      exists:
+        - "${SERVICE_DIR}/Dockerfile"
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      exists:
+        - "${SERVICE_DIR}/Dockerfile"
+    - when: never
+  script:
+    - unset DOCKER_AUTH_CONFIG
+    - cd ${SERVICE_DIR}
+    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY_IMAGE
+    - docker build -t $CI_REGISTRY_IMAGE/${SERVICE_NAME}:$CI_COMMIT_SHORT_SHA -f Dockerfile .
+    - docker tag $CI_REGISTRY_IMAGE/${SERVICE_NAME}:$CI_COMMIT_SHORT_SHA $CI_REGISTRY_IMAGE/${SERVICE_NAME}:antifraud
+
+build_flow_selection_service:
+  extends: .build_docker_image
+  stage: building
+  variables:
+    SERVICE_NAME: flow-selection-service
+    SERVICE_DIR: flow-selection-service
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+      exists:
+        - flow-selection-service/**/*
+      needs: ['testing_job_flow']
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      exists:
+        - flow-selection-service/**/*
+      needs: ['testing_job_flow']
+
+
+build_scoring_service:
+  extends: .build_docker_image
+  stage: building
+  variables:
+    SERVICE_NAME: scoring-service
+    SERVICE_DIR: scoring-service
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+      exists:
+        - scoring-service/**/*
+      needs: ['testing_job_scoring']
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      exists:
+        - scoring-service/**/*
+      needs: ['testing_job_scoring']
+
+
+build_data_service:
+  extends: .build_docker_image
+  stage: building
+  variables:
+    SERVICE_NAME: data-service
+    SERVICE_DIR: data-service
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+      exists:
+        - data-service/**/*
+      needs: ['testing_job_data_service']
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      exists:
+        - data-service/**/*
+      needs: ['testing_job_data_service']
+
+
+.push_to_registry:
+  tags:
+    - shell
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+      changes:
+        - ${SERVICE_DIR}/src/**/*
+        - ${SERVICE_DIR}/poetry.lock
+        - ${SERVICE_DIR}/pyproject.toml
+        - ${SERVICE_DIR}/Dockerfile
+        - .gitlab-ci.yml
+      exists:
+        - "${SERVICE_DIR}/Dockerfile"
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      exists:
+        - "${SERVICE_DIR}/Dockerfile"
+    - when: never
+  script:
+    - unset DOCKER_AUTH_CONFIG
+    - cd ${SERVICE_DIR}
+    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY_IMAGE
+    - docker push $CI_REGISTRY_IMAGE/${SERVICE_NAME}:antifraud
+
+push_flow_selection_service:
+  extends: .push_to_registry
+  stage: pushing
+  variables:
+    SERVICE_NAME: flow-selection-service
+    SERVICE_DIR: flow-selection-service
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+      changes:
+        - ${SERVICE_DIR}/src/**/*
+        - ${SERVICE_DIR}/poetry.lock
+        - ${SERVICE_DIR}/pyproject.toml
+        - ${SERVICE_DIR}/Dockerfile
+        - .gitlab-ci.yml
+      needs: ['build_flow_selection_service']
+      exists:
+        - "${SERVICE_DIR}/Dockerfile"
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      exists:
+        - "${SERVICE_DIR}/Dockerfile"
+      needs: ['build_flow_selection_service']
+    - when: never
+
+push_scoring_service:
+  extends: .push_to_registry
+  stage: pushing
+  variables:
+    SERVICE_NAME: scoring-service
+    SERVICE_DIR: scoring-service
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+      changes:
+        - ${SERVICE_DIR}/src/**/*
+        - ${SERVICE_DIR}/poetry.lock
+        - ${SERVICE_DIR}/pyproject.toml
+        - ${SERVICE_DIR}/Dockerfile
+        - .gitlab-ci.yml
+      needs: ['build_scoring_service']
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      exists:
+        - "${SERVICE_DIR}/Dockerfile"
+      needs: ['build_scoring_service']
+    - when: never
+
+
+push_data_service:
+  extends: .push_to_registry
+  stage: pushing
+  variables:
+    SERVICE_NAME: data-service
+    SERVICE_DIR: data-service
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+      changes:
+        - ${SERVICE_DIR}/src/**/*
+        - ${SERVICE_DIR}/poetry.lock
+        - ${SERVICE_DIR}/pyproject.toml
+        - ${SERVICE_DIR}/Dockerfile
+        - .gitlab-ci.yml
+      needs: ['build_data_service']
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      exists:
+        - "${SERVICE_DIR}/Dockerfile"
+      needs: ['build_data_service']
+    - when: never
+
+cache:
+  key:
+    files:
+      - pyproject.toml
+      - poetry.lock
+    prefix: "$CI_COMMIT_REF_SLUG"
+  paths:
+    - /root/.cache/pypoetry
+    - /root/.cache/pip

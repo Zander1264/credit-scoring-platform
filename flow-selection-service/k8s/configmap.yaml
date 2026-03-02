@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config-flow-aabalymov
+  namespace: test
+  labels:
+    student: aabalymov
+    app: data-service
+data:
+  REDIS_HOST: "redis-master.infra.svc.cluster.local"
+  REDIS_PORT: "6379"
+  KEY_PREFIX: "aabalymov"
+  config.yaml: |
+    app:
+      host: '0.0.0.0'
+      port: 8000
+
+    data_service:
+      base_url: "http://data-service-aabalymov.test.svc.cluster.local:8002"
+      timeout: 5
+      retries:
+        max_attempts: 2
+        delay: 1
+    
+    redis:
+      ttl: 120
+      timeout: 5

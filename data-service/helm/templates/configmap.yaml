@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config-data-service-{{ .Values.labels.student }}
+  namespace: {{ .Values.namespace }}
+  labels: 
+    {{- toYaml .Values.labels | nindent 4}}
+data: 
+  OTEL_EXPORTER_OTLP_ENDPOINT: "{{ .Values.config.jaegerUrl }}"
+  SERVICE_NAME: "{{ .Values.labels.app }}"
+  STUDENT_NAME: "{{ .Values.labels.student }}"
+  config.yaml: |
+    app:
+      host: {{ .Values.config.host }}
+      port: {{ .Values.config.port }}
+    kafka:
+      {{- toYaml .Values.config.kafka | nindent 6}}

@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scoring-service-aabalymov
+  namespace: test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scoring-service
+  template:
+    metadata:
+      labels:
+        student: aabalymov
+        app: scoring-service
+    spec:
+      containers:
+        - name: shift-python-container
+          image: shift.gitlab.yandexcloud.net:5050/shift-python/y2025/homeworks/abalymov-a/shift-project/scoring-service:1348db91
+          resources:
+            limits:
+              memory: "100Mi"
+              cpu: "100m"
+          ports:
+            - containerPort: 8001
+          volumeMounts:
+          - name: config-volume
+            mountPath: /app/config.yaml
+            subPath: config.yaml
+          readinessProbe:
+            httpGet:
+              path: /healthz/ready
+              port: 8001
+            failureThreshold: 5
+            initialDelaySeconds: 30
+            periodSeconds: 2
+            successThreshold: 2
+          livenessProbe:
+            httpGet:
+              path: /healthz/up
+              port: 8001
+            failureThreshold: 10
+            initialDelaySeconds: 10
+            periodSeconds: 2
+      volumes:
+      - name: config-volume
+        configMap:
+          name: app-config-scoring-aabalymov
+          items:
+          - key: config.yaml
+            path: config.yaml
+      imagePullSecrets:
+        - name: shift-gitlab-registry-auth-aabalymov
+
